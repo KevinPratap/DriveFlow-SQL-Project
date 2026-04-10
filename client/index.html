@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DriveFlow | Smart Mobility Dashboard</title>
+    <!-- Modern Styling -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Leaflet CSS for Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="map-app">
+    
+    <!-- Floating Sidebar Navigation -->
+        <nav class="sidebar" id="mainSidebar">
+            <button id="sidebarToggle" class="sidebar-toggle-btn" onclick="toggleSidebar()">◀</button>
+            <div class="sidebar-header">
+                <div class="logo">Drive<span>Flow</span></div>
+                <div id="userProfile" class="user-profile">
+                    <span id="userName" class="user-name">Guest</span>
+                    <button id="logoutBtn" class="btn-logout hidden">Logout</button>
+                    <button id="loginBtn" class="btn-auth">Login</button>
+                </div>
+            </div>
+
+            <div class="sidebar-scroll">
+                <div class="app-nav">
+                    <button class="nav-btn active" onclick="switchView('booking')">Book Ride</button>
+                    <button class="nav-btn" onclick="switchView('history')">History</button>
+                    <button class="nav-btn" onclick="switchView('drivers')">Drivers</button>
+                    <button class="nav-btn" onclick="switchView('schema')">ER Diagram</button>
+                </div>
+
+            <section id="view-booking" class="app-view">
+                <div class="booking-card">
+                    <h2 class="view-title">Where to?</h2>
+                    <form id="bookingForm" class="search-group">
+                        <div class="input-wrapper" style="position: relative;">
+                            <span class="dot pickup-dot"></span>
+                            <input type="text" id="pickup" placeholder="Current Location" autocomplete="off" required>
+                            <div id="pickupResults" class="search-results"></div>
+                        </div>
+                        <div class="input-wrapper" style="position: relative;">
+                            <span class="dot dropoff-dot"></span>
+                            <input type="text" id="dropoff" placeholder="Enter Destination" autocomplete="off" required>
+                            <div id="dropoffResults" class="search-results"></div>
+                        </div>
+                    </form>
+
+                    <div class="vehicle-selection">
+                        <h3>Choose a Ride</h3>
+                        <div id="driverList" class="vehicle-grid">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+
+                    <div class="booking-footer">
+                        <div class="fare-info">
+                            <span class="label">Est. Total</span>
+                            <span class="value" id="estimatedFare">₹0.00</span>
+                        </div>
+                        <button id="bookSubmitBtn" class="btn-primary" disabled>Book Now</button>
+                    </div>
+                </div>
+            </section>
+
+            </section>
+
+            <section id="view-history" class="app-view hidden">
+                <h2 class="view-title">My Trips</h2>
+                <div id="ridesHistory" class="history-list">
+                    <!-- Dynamic Content -->
+                </div>
+            </section>
+
+            <!-- Driver Management View -->
+            <section id="view-drivers" class="app-view hidden">
+                    <h2 class="view-title">Driver Management</h2>
+                    <div class="mgmt-grid">
+                        <section class="mgmt-card">
+                            <h3>Register New Driver</h3>
+                            <form id="driverForm" class="mgmt-form">
+                                <div class="form-row">
+                                    <input type="text" id="d_name" placeholder="Full Name" required>
+                                    <input type="text" id="d_phone" placeholder="Phone Number" required>
+                                </div>
+                                <input type="text" id="d_license" placeholder="License No (DL-XXXX)" required>
+                                <div class="form-row">
+                                    <input type="text" id="v_model" placeholder="Vehicle Model" required>
+                                    <input type="text" id="v_plate" placeholder="Number Plate" required>
+                                </div>
+                                <select id="v_type">
+                                    <option value="Sedan">Sedan</option>
+                                    <option value="SUV">SUV</option>
+                                    <option value="Mini">Mini</option>
+                                </select>
+                                <button type="submit" class="btn-primary">Register Driver & Vehicle</button>
+                            </form>
+                        </section>
+                        <section class="mgmt-card">
+                            <h3>Active Drivers</h3>
+                            <div id="fleetList" class="fleet-table-container">
+                                <!-- Loaded via API -->
+                            </div>
+                        </section>
+                </div>
+            </section>
+
+                </div>
+            </section>
+        </div>
+            
+            <div class="sidebar-footer">
+                &copy; 2026 DriveFlow System (DBMS Project)
+            </div>
+        </nav>
+
+    <!-- Main Map Container -->
+    <main id="map"></main>
+
+    <!-- Fullscreen ER View -->
+    <main id="view-schema" style="display:none; flex: 1; min-width: 0; flex-direction:column; width:100%; height:100%; background:var(--slate-50); position:relative; overflow: hidden;">
+        <div style="padding:24px; background:white; border-bottom:1px solid var(--slate-200); z-index:10; flex-shrink: 0;">
+            <h2 style="margin:0; font-size:24px; color:var(--slate-800);">Interactive ER Visualizer</h2>
+            <p style="margin:8px 0 0; color:var(--text-muted); font-size:14px;">Drag the table nodes below to organize your schema. Execution animations run live!</p>
+        </div>
+        <div style="flex:1; width:100%; height: 100%; overflow:hidden; position: relative;" id="interactive-er-container">
+            <svg width="100%" height="100%" viewBox="0 0 1200 800" class="er-diagram" id="fullscreen-svg" style="position: absolute; top: 0; left: 0;">
+                <defs>
+                    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto-start-reverse">
+                        <path d="M0,1 L0,9 L9,5 z" fill="#475569" />
+                    </marker>
+                </defs>
+                
+                <!-- Edges with Labels -->
+                <g class="rel-group">
+                    <line class="edge fs-edge" id="edge-users-bookings" x1="240" y1="210" x2="540" y2="410" marker-end="url(#arrow)" />
+                    <text class="rel-label" id="label-users-bookings" x="390" y="300" text-anchor="middle" font-size="11" fill="#64748b" font-weight="800" style="pointer-events:none;">1:N (Reserves)</text>
+                </g>
+                <g class="rel-group">
+                    <line class="edge fs-edge" id="edge-drivers-vehicles" x1="540" y1="210" x2="840" y2="210" marker-start="url(#arrow)" marker-end="url(#arrow)" />
+                    <text class="rel-label" id="label-drivers-vehicles" x="690" y="200" text-anchor="middle" font-size="11" fill="#64748b" font-weight="800" style="pointer-events:none;">1:1 (Assigned)</text>
+                </g>
+                <g class="rel-group">
+                    <line class="edge fs-edge" id="edge-drivers-bookings" x1="540" y1="210" x2="540" y2="410" marker-end="url(#arrow)" />
+                    <text class="rel-label" id="label-drivers-bookings" x="530" y="310" text-anchor="end" font-size="11" fill="#64748b" font-weight="800" style="pointer-events:none;">1:N (Accepts)</text>
+                </g>
+                <g class="rel-group">
+                    <line class="edge fs-edge" id="edge-bookings-trips" x1="540" y1="410" x2="840" y2="410" marker-end="url(#arrow)" />
+                    <text class="rel-label" id="label-bookings-trips" x="690" y="400" text-anchor="middle" font-size="11" fill="#64748b" font-weight="800" style="pointer-events:none;">1:1 (Executes)</text>
+                </g>
+                <g class="rel-group">
+                    <line class="edge fs-edge" id="edge-trips-payments" x1="840" y1="410" x2="840" y2="610" marker-end="url(#arrow)" />
+                    <text class="rel-label" id="label-trips-payments" x="850" y="510" text-anchor="start" font-size="11" fill="#64748b" font-weight="800" style="pointer-events:none;">1:1 (Requires)</text>
+                </g>
+
+                <!-- Nodes -->
+                <g class="draggable-node" data-id="users" transform="translate(50, 50)">
+                    <rect width="400" height="250" rx="4" class="node" id="node-users" style="fill:rgba(255,255,255,0.95); stroke:var(--primary); stroke-width:3px;" />
+                    <foreignObject width="400" height="250">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%; height:100%; padding:10px; display:flex; flex-direction:column; box-sizing:border-box;">
+                            <div style="font-weight:900; font-size:13px; letter-spacing:1px; color:#1e293b; border-bottom:2px solid #1a73e8; padding-bottom:6px; margin-bottom:8px; display:flex; justify-content:space-between;"><span>USERS</span> <span style="font-size:10px; color:#64748b;">(Entity)</span></div>
+                            <div id="fs-table-users" class="live-schema-table" style="flex:1; overflow-y:auto; overflow-x:auto; font-size:11px; cursor:default;">Loading live data...</div>
+                        </div>
+                    </foreignObject>
+                </g>
+                <g class="draggable-node" data-id="drivers" transform="translate(500, 50)">
+                    <rect width="400" height="250" rx="4" class="node" id="node-drivers" style="fill:rgba(255,255,255,0.95); stroke:var(--primary); stroke-width:3px;" />
+                    <foreignObject width="400" height="250">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%; height:100%; padding:10px; display:flex; flex-direction:column; box-sizing:border-box;">
+                            <div style="font-weight:900; font-size:13px; letter-spacing:1px; color:#1e293b; border-bottom:2px solid #1a73e8; padding-bottom:6px; margin-bottom:8px; display:flex; justify-content:space-between;"><span>DRIVERS</span> <span style="font-size:10px; color:#64748b;">(Entity)</span></div>
+                            <div id="fs-table-drivers" class="live-schema-table" style="flex:1; overflow-y:auto; overflow-x:auto; font-size:11px; cursor:default;">Loading live data...</div>
+                        </div>
+                    </foreignObject>
+                </g>
+                <g class="draggable-node" data-id="vehicles" transform="translate(950, 50)">
+                    <rect width="400" height="250" rx="4" class="node" id="node-vehicles" style="fill:rgba(255,255,255,0.95); stroke:var(--primary); stroke-width:3px;" />
+                    <foreignObject width="400" height="250">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%; height:100%; padding:10px; display:flex; flex-direction:column; box-sizing:border-box;">
+                            <div style="font-weight:900; font-size:13px; letter-spacing:1px; color:#1e293b; border-bottom:2px solid #1a73e8; padding-bottom:6px; margin-bottom:8px; display:flex; justify-content:space-between;"><span>VEHICLES</span> <span style="font-size:10px; color:#64748b;">(Hardware)</span></div>
+                            <div id="fs-table-vehicles" class="live-schema-table" style="flex:1; overflow-y:auto; overflow-x:auto; font-size:11px; cursor:default;">Loading live data...</div>
+                        </div>
+                    </foreignObject>
+                </g>
+                <g class="draggable-node" data-id="bookings" transform="translate(500, 350)">
+                    <rect width="400" height="250" rx="4" class="node" id="node-bookings" style="fill:rgba(255,255,255,0.95); stroke:#eab308; stroke-width:3px;" />
+                    <foreignObject width="400" height="250">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%; height:100%; padding:10px; display:flex; flex-direction:column; box-sizing:border-box;">
+                            <div style="font-weight:900; font-size:13px; letter-spacing:1px; color:#1e293b; border-bottom:2px solid #eab308; padding-bottom:6px; margin-bottom:8px; display:flex; justify-content:space-between;"><span>BOOKINGS</span> <span style="font-size:10px; color:#64748b;">(Action)</span></div>
+                            <div id="fs-table-bookings" class="live-schema-table" style="flex:1; overflow-y:auto; overflow-x:auto; font-size:11px; cursor:default;">Loading live data...</div>
+                        </div>
+                    </foreignObject>
+                </g>
+                <g class="draggable-node" data-id="trips" transform="translate(950, 350)">
+                    <rect width="400" height="250" rx="4" class="node" id="node-trips" style="fill:rgba(255,255,255,0.95); stroke:#22c55e; stroke-width:3px;" />
+                    <foreignObject width="400" height="250">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%; height:100%; padding:10px; display:flex; flex-direction:column; box-sizing:border-box;">
+                            <div style="font-weight:900; font-size:13px; letter-spacing:1px; color:#1e293b; border-bottom:2px solid #22c55e; padding-bottom:6px; margin-bottom:8px; display:flex; justify-content:space-between;"><span>TRIPS</span> <span style="font-size:10px; color:#64748b;">(Execution)</span></div>
+                            <div id="fs-table-trips" class="live-schema-table" style="flex:1; overflow-y:auto; overflow-x:auto; font-size:11px; cursor:default;">Loading live data...</div>
+                        </div>
+                    </foreignObject>
+                </g>
+                <g class="draggable-node" data-id="payments" transform="translate(950, 650)">
+                    <rect width="400" height="250" rx="4" class="node" id="node-payments" style="fill:rgba(255,255,255,0.95); stroke:#8b5cf6; stroke-width:3px;" />
+                    <foreignObject width="400" height="250">
+                        <div xmlns="http://www.w3.org/1999/xhtml" style="width:100%; height:100%; padding:10px; display:flex; flex-direction:column; box-sizing:border-box;">
+                            <div style="font-weight:900; font-size:13px; letter-spacing:1px; color:#1e293b; border-bottom:2px solid #8b5cf6; padding-bottom:6px; margin-bottom:8px; display:flex; justify-content:space-between;"><span>PAYMENTS</span> <span style="font-size:10px; color:#64748b;">(Ledger)</span></div>
+                            <div id="fs-table-payments" class="live-schema-table" style="flex:1; overflow-y:auto; overflow-x:auto; font-size:11px; cursor:default;">Loading live data...</div>
+                        </div>
+                    </foreignObject>
+                </g>
+            </svg>
+        </div>
+    </main>
+
+    <!-- Persistent DBMS Engine Overlays -->
+    <div id="persistent-engine">
+
+        <!-- Live Data Tables Widget -->
+        <div id="tables-widget" class="floating-widget" style="left: calc(var(--sidebar-width) + 24px); right: auto; width: 450px; bottom: 200px;" onclick="if(this.classList.contains('minimized')) toggleWidget('tables-widget')">
+            <div class="widget-min-icon">DB</div>
+            <div class="widget-header">
+                <span>Live Data Entries</span>
+                <select id="tableSelector" style="font-size: 11px; padding: 2px 4px; border: 1px solid var(--slate-200); border-radius: 4px; background: white;" onchange="renderLiveTables()">
+                    <option value="all">All Tables</option>
+                    <option value="users">Users</option>
+                    <option value="drivers">Drivers</option>
+                    <option value="vehicles">Vehicles</option>
+                    <option value="bookings">Bookings</option>
+                    <option value="trips">Trips</option>
+                    <option value="payments">Payments</option>
+                </select>
+                <button class="btn-icon" onclick="event.stopPropagation(); toggleWidget('tables-widget')">×</button>
+            </div>
+            <div class="widget-content" id="liveTablesContainer" style="max-height: 400px; overflow-y: auto; padding: 0;">
+                <div style="padding: 12px; font-size:12px; color:var(--text-muted); text-align:center;">Syncing with Engine...</div>
+            </div>
+        </div>
+
+        <!-- Bottom SQL Console -->
+        <div id="sql-console" class="bottom-console">
+            <div class="console-header">
+                <div class="status-indicator">
+                    <span class="pulse"></span>
+                    <span>LIVE SQL STREAM</span>
+                </div>
+                <div class="console-actions">
+                    <button class="btn-icon" onclick="clearLogs()">Clear</button>
+                    <button class="btn-icon" id="btnMinimizeConsole" onclick="toggleConsole()">Minimize</button>
+                </div>
+            </div>
+            <div id="sqlLog" class="terminal-content">
+                <div>[SYS] Relational Observer Active...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <h2 id="authTitle">Welcome Back</h2>
+            <form id="loginForm">
+                <div id="registerFields" class="hidden">
+                    <div class="form-group">
+                        <label>Full Name</label>
+                        <input type="text" id="regName">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Number</label>
+                        <input type="text" id="regPhone">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="loginEmail" value="amit@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="loginPass" value="pass123" required>
+                </div>
+                <button type="submit" id="authSubmitBtn" class="btn-submit">Log In</button>
+                <div style="margin-top: 16px; text-align: center; font-size: 13px;">
+                    <a href="#" id="toggleAuthModeBtn" onclick="toggleAuthMode(event)" style="color: var(--primary); text-decoration: none; font-weight: 600;">Don't have an account? Register</a>
+                </div>
+            </form>
+            <button class="modal-close" onclick="toggleLogin(false)" id="closeModal">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="app.js"></script>
+</body>
+</html>
